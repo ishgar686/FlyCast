@@ -26,6 +26,7 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+db_config.py
 
 # Virtual environments
 venv/
