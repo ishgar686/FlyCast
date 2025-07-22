@@ -7,3 +7,4 @@ beautifulsoup4
 scikit-learn
 pandas
 numpy
+psycopg2-binary
