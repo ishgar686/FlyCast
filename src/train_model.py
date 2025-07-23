@@ -33,17 +33,28 @@ def load_and_clean_data(file_path: str = "data/cleaned_data.csv"):
 
 
 def create_features(df: pd.DataFrame) -> pd.DataFrame:
+    # Use fallback columns if needed
     if 'origin_airport' in df.columns:
         df['origin'] = df['origin_airport']
+    elif 'origin' in df.columns:
+        df['origin'] = df['origin']
     else:
-        df['origin'] = 'UNK'
+        raise ValueError("No valid origin column found")
+
     if 'destination_airport' in df.columns:
         df['destination'] = df['destination_airport']
+    elif 'destination' in df.columns:
+        df['destination'] = df['destination']
     else:
-        df['destination'] = 'UNK'
-    if 'airline' not in df.columns:
-        df['airline'] = df.get('carrier', 'UNK')
+        raise ValueError("No valid destination column found")
 
+    if 'airline' not in df.columns:
+        if 'carrier' in df.columns:
+            df['airline'] = df['carrier']
+        else:
+            df['airline'] = 'UNK'
+
+    # Scheduled departure
     if 'scheduled_departure' in df.columns:
         df['scheduled_departure'] = pd.to_datetime(df['scheduled_departure'])
     elif {'year', 'month', 'day_of_month'}.issubset(df.columns):
@@ -56,9 +67,11 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df['scheduled_departure'] = pd.to_datetime('2023-01-01')
 
+    # Time features
     df['hour'] = df['scheduled_departure'].dt.hour
     df['weekday'] = df['scheduled_departure'].dt.weekday
 
+    # Filter out rows with missing or malformed IATA codes
     df = df.dropna(subset=['origin', 'destination', 'airline'])
     df = df[df['origin'].astype(str).str.len() == 3]
     df = df[df['destination'].astype(str).str.len() == 3]
