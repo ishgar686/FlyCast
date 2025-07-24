@@ -8,6 +8,8 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
+__version__ = "1.0.0"
+
 # Known popular airports (safe list)
 KNOWN_AIRPORTS = {
     "SAN", "LAX", "SFO", "SJC", "SEA", "PHX", "DEN", "ORD", "ATL", "DFW", "JFK", "LAS"
