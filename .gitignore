@@ -52,3 +52,6 @@ mock_flights/
 
 # Model files
 *.pkl
+
+#GCP
+gcp_deploy/.gcp_env/
