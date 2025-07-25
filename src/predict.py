@@ -3,7 +3,7 @@ import argparse
 import os
 from datetime import datetime
 from typing import Optional, Any, Dict, List
-from scraper import FlightDataFetcher
+from src.scraper import FlightDataFetcher
 import pandas as pd
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
