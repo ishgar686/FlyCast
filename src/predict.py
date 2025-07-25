@@ -10,6 +10,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 __version__ = "1.0.0"
 
+
+
 # Known popular airports (safe list)
 KNOWN_AIRPORTS = {
     "SAN", "LAX", "SFO", "SJC", "SEA", "PHX", "DEN", "ORD", "ATL", "DFW", "JFK", "LAS"
@@ -79,11 +81,16 @@ def predict_delay(model: Any, flight_data: Dict[str, Any], encoders: Optional[Di
 
 
 def main():
+    parser.add_argument('--version', action='store_true', help='Show script version and exit')
     parser = argparse.ArgumentParser(description='Predict flight delays using trained model')
     parser.add_argument('flight_number', help='Flight number (e.g., WN673)')
     parser.add_argument('--mock', action='store_true', help='Use mock data instead of live API')
     parser.add_argument('--model', default='model.pkl', help='Path to trained model file')
     args = parser.parse_args()
+    if args.version:
+        print(f"FlyCast Predictor Version: {__version__}")
+        return
+
 
     model, encoders = load_model(args.model)
     if model is None:
