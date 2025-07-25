@@ -15,6 +15,9 @@ model, encoders = load_model(MODEL_PATH)
 MOCK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'mock_flights'))
 
 @app.route("/predict", methods=["POST"])
+@app.route("/", methods=["GET"])
+def home():
+    return "🚀 FlyCast API is up and running!", 200
 def predict():
     data = request.json
     flight_number = data.get("flight_number")
