@@ -1,0 +1,15 @@
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore local environment files
+venv/
+.env
+
+# Ignore test/mock files
+mock_flights/
+*.log
+
+# Ignore IDE and OS files
+.vscode/
+.DS_Store
