@@ -1,8 +1,14 @@
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
 import random
+import re
+
 
 app = FastAPI()
+
+flight_number_pattern = re.compile(r"^[A-Za-z]{2,}\d{2,}$")
+if not flight_number_pattern.match(args.flight_number):
+    print("❌ Invalid flight number format. Please use something like 'WN1254'.")
 
 # Input model for flight prediction
 class FlightRequest(BaseModel):
