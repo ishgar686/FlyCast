@@ -107,12 +107,18 @@ def main():
             return
 
         delay_prediction = predict_delay(model, flight_data, encoders)
+        GREEN = "\033[92m"
+        YELLOW = "\033[93m"
+        BLUE = "\033[94m"
+        RESET = "\033[0m"
+
         if delay_prediction < 0:
-            print(f"Status: ~{abs(delay_prediction):.2f} minutes early (EARLY)")
+            print(f"{BLUE}Status: ~{abs(delay_prediction):.2f} minutes early (EARLY){RESET}")
         elif delay_prediction < 10:
-            print(f"Status: ~{delay_prediction:.2f} minutes late (ON TIME)")
+            print(f"{GREEN}Status: ~{delay_prediction:.2f} minutes late (ON TIME){RESET}")
         else:
-            print(f"Status: ~{delay_prediction:.2f} minutes late (DELAYED)")
+            print(f"{YELLOW}Status: ~{delay_prediction:.2f} minutes late (DELAYED){RESET}")
+
 
     except Exception as e:
         print(f"Unexpected error: {e}")
