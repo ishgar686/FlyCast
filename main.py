@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query
 from pydantic import BaseModel
 import random
 import re
+import datetime
 
 
 app = FastAPI()
@@ -29,6 +30,7 @@ def index():
 @app.post("/predict")
 def predict_delay(req: FlightRequest):
     delay_minutes = random.choice([0, 5, 15, 30, 60])
+    print(f"[{datetime.datetime.now()}] Incoming request: {data}")
     return {
         "airline": req.airline,
         "flight_number": req.flight_number,
