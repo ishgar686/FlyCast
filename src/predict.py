@@ -1,9 +1,13 @@
 import pickle
 import argparse
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 from datetime import datetime
 from typing import Optional, Any, Dict, List
-from src.scraper import FlightDataFetcher
+from scraper import FlightDataFetcher
 import pandas as pd
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -81,8 +85,8 @@ def predict_delay(model: Any, flight_data: Dict[str, Any], encoders: Optional[Di
 
 
 def main():
-    parser.add_argument('--version', action='store_true', help='Show script version and exit')
     parser = argparse.ArgumentParser(description='Predict flight delays using trained model')
+    parser.add_argument('--version', action='store_true', help='Show script version and exit')
     parser.add_argument('flight_number', help='Flight number (e.g., WN673)')
     parser.add_argument('--mock', action='store_true', help='Use mock data instead of live API')
     parser.add_argument('--model', default='model.pkl', help='Path to trained model file')

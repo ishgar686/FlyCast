@@ -26,9 +26,10 @@ class FlightDataFetcher:
             matching_files = [f for f in all_files if f.startswith(airline_prefix)]
 
             if matching_files:
-                chosen_file = random.choice(matching_files)
+                # Deterministic choice based on flight_number hash
+                chosen_file = matching_files[hash(flight_number) % len(matching_files)]
             elif all_files:
-                chosen_file = random.choice(all_files)
+                chosen_file = all_files[hash(flight_number) % len(all_files)]
             else:
                 return None
 
@@ -36,6 +37,7 @@ class FlightDataFetcher:
                 return json.load(f)
         else:
             return self._fetch_live_data(flight_number)
+
 
     def _fetch_live_data(self, flight_number: str) -> Optional[Dict[str, Any]]:
         url = "http://api.aviationstack.com/v1/flights"
