@@ -21,3 +21,11 @@ python src/scripts/prepare_training_data.py
 
 # Train the model
 python src/train_model.py
+
+
+# How Users Can Interact
+Example:
+```bash
+python src/cli.py WN1254
+Replace WN1254 with your flight number to receive a delay estimate and status update.
+
