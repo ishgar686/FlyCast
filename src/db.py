@@ -2,8 +2,11 @@ import os
 import psycopg2
 from contextlib import contextmanager
 from psycopg2.extras import RealDictCursor
-from db_config import DB_CONFIG
 
+try:
+    from db_config import DB_CONFIG
+except Exception:
+    DB_CONFIG = {}
 
 def _cfg(key: str, default: str | None = None) -> str | None:
     """
