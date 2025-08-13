@@ -91,6 +91,7 @@ def main():
     try:
         with conn:
             with conn.cursor() as cur:
+                # Upsert or fetch user
                 cur.execute(
                     """
                     INSERT INTO users (name, email, school_year, consented)
@@ -105,6 +106,7 @@ def main():
                 )
                 user_id = cur.fetchone()[0]
 
+                # Map flight fields
                 airline = flight_data.get("airline", "Unknown")
                 dep_ts = flight_data.get("departure_time")
                 arr_ts = flight_data.get("arrival_time")
@@ -113,12 +115,14 @@ def main():
                 gate = flight_data.get("gate")
                 terminal = flight_data.get("terminal")
 
+                # Insert flight and get id
                 cur.execute(
                     """
                     INSERT INTO user_flights (
                         user_id, flight_number, airline, departure_time, arrival_time,
                         origin_airport, destination_airport, gate, terminal, predicted_delay_minutes
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING id;
                     """,
                     (
                         user_id,
@@ -133,6 +137,30 @@ def main():
                         round(float(delay_prediction), 2),
                     ),
                 )
+                uf_id = cur.fetchone()[0]
+
+                # Save a rideshare estimate (SAN <-> UCSD only), quietly
+                try:
+                    from src.rideshare import estimate_ucsd_san
+                    origin_up = (origin or "").upper()
+                    dest_up = (dest or "").upper()
+                    is_departing_from_SAN = origin_up in ("SAN", "KSAN")
+                    is_arriving_to_SAN = dest_up in ("SAN", "KSAN")
+                    if is_departing_from_SAN or is_arriving_to_SAN:
+                        est_cost, est_mins = estimate_ucsd_san(is_departing_from_SAN)
+                        cur.execute(
+                            """
+                            INSERT INTO rideshare_estimates (
+                                user_flight_id, estimated_cost_usd, estimated_duration_minutes
+                            ) VALUES (%s, %s, %s)
+                            """,
+                            (uf_id, est_cost, est_mins),
+                        )
+                        print(f"Ride estimate: ${est_cost} ~ {est_mins} min (saved)")
+                except Exception:
+                    # Don't block the flow if estimates fail
+                    pass
+
         print("Saved to database.")
     except Exception as e:
         print(f"❌ DB error while saving: {e}")
