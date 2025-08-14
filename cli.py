@@ -50,6 +50,21 @@ def main():
         print("⚠️  Invalid flight number format. Please enter something like 'WN1254'.")
         return
 
+    # Optional rideshare inputs
+    wants_ride = prompt_yes_no("Do you want a rideshare estimate to/from the airport?", default=True)
+    rider_address = ""
+    rider_miles = None
+    ride_time = ""
+    if wants_ride:
+        print("\nRideshare options:")
+        rider_address = input("Pickup/dropoff address (optional; works best with Google key): ").strip()
+        miles_str = input("If no address or no key: approx miles to airport (optional number): ").strip()
+        try:
+            rider_miles = float(miles_str) if miles_str else None
+        except Exception:
+            rider_miles = None
+        ride_time = input("Pickup time (HH:MM 24h, local) [Enter for now]: ").strip()
+
     # Internal config (no user prompts)
     use_mock = (os.getenv("FLYCAST_USE_MOCK", "1") == "1")
     model_path = os.getenv("FLYCAST_MODEL_PATH", "model/model.pkl")
@@ -139,15 +154,43 @@ def main():
                 )
                 uf_id = cur.fetchone()[0]
 
-                # Save a rideshare estimate (SAN <-> UCSD only), quietly
-                try:
-                    from src.rideshare import estimate_ucsd_san
+                # 5) Rideshare estimate (print + save)
+                if wants_ride:
+                    airport_code = None
+                    direction = None
                     origin_up = (origin or "").upper()
-                    dest_up = (dest or "").upper()
-                    is_departing_from_SAN = origin_up in ("SAN", "KSAN")
-                    is_arriving_to_SAN = dest_up in ("SAN", "KSAN")
-                    if is_departing_from_SAN or is_arriving_to_SAN:
-                        est_cost, est_mins = estimate_ucsd_san(is_departing_from_SAN)
+                    dest_up   = (dest or "").upper()
+                    if origin_up in ("SAN", "KSAN"):
+                        airport_code = "SAN"
+                        direction = "from_airport"
+                    elif dest_up in ("SAN", "KSAN"):
+                        airport_code = "SAN"
+                        direction = "to_airport"
+
+                    est_tuple = None
+                    if airport_code:
+                        from src.rideshare import estimate_to_from_airport
+                        est_tuple = estimate_to_from_airport(
+                            airport_code,
+                            address=rider_address or None,
+                            miles_override=rider_miles,
+                            when_hhmm=ride_time or None,
+                            direction=direction,
+                        )
+                    elif rider_miles is not None:
+                        # Generic miles-based estimate when airport unsupported
+                        from src.rideshare import estimate_to_from_airport
+                        est_tuple = estimate_to_from_airport(
+                            "SAN",  # coords not used in miles-only path
+                            address=None,
+                            miles_override=rider_miles,
+                            when_hhmm=ride_time or None,
+                            direction="to_airport",
+                        )
+
+                    if est_tuple:
+                        est_cost, est_mins = est_tuple
+                        print(f"Rideshare estimate: ${est_cost} ~ {est_mins} min")
                         cur.execute(
                             """
                             INSERT INTO rideshare_estimates (
@@ -156,10 +199,8 @@ def main():
                             """,
                             (uf_id, est_cost, est_mins),
                         )
-                        print(f"Ride estimate: ${est_cost} ~ {est_mins} min (saved)")
-                except Exception:
-                    # Don't block the flow if estimates fail
-                    pass
+                    else:
+                        print("Rideshare estimate: (skipped — need an address+key or miles)")
 
         print("Saved to database.")
     except Exception as e:
