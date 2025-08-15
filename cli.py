@@ -50,14 +50,14 @@ def main():
         print("⚠️  Invalid flight number format. Please enter something like 'WN1254'.")
         return
 
-    # Optional rideshare inputs
+    # Optional rideshare inputs (address or miles + optional time)
     wants_ride = prompt_yes_no("Do you want a rideshare estimate to/from the airport?", default=True)
     rider_address = ""
     rider_miles = None
     ride_time = ""
     if wants_ride:
         print("\nRideshare options:")
-        rider_address = input("Pickup/dropoff address (optional; works best with Google key): ").strip()
+        rider_address = input("Pickup/dropoff address (optional; best with Google key): ").strip()
         miles_str = input("If no address or no key: approx miles to airport (optional number): ").strip()
         try:
             rider_miles = float(miles_str) if miles_str else None
@@ -93,6 +93,51 @@ def main():
 
     print(f"\nPredicted delay for {flight_number}: {round(float(delay_prediction), 2)} minutes")
 
+    # 3.5) Compute rideshare estimate now (and show the $$$)
+    ride_estimate = None  # tuple (cost, mins) or None
+    if wants_ride:
+        origin = flight_data.get("origin") or flight_data.get("origin_airport")
+        dest   = flight_data.get("destination") or flight_data.get("destination_airport")
+        origin_up = (origin or "").upper()
+        dest_up   = (dest or "").upper()
+
+        airport_code = None
+        direction = None
+        if origin_up in ("SAN", "KSAN"):
+            airport_code = "SAN"
+            direction = "from_airport"
+        elif dest_up in ("SAN", "KSAN"):
+            airport_code = "SAN"
+            direction = "to_airport"
+
+        try:
+            from src.rideshare import estimate_to_from_airport
+            if airport_code:
+                ride_estimate = estimate_to_from_airport(
+                    airport_code,
+                    address=rider_address or None,
+                    miles_override=rider_miles,
+                    when_hhmm=ride_time or None,
+                    direction=direction,
+                )
+            elif rider_miles is not None:
+                # Generic miles-based estimate when airport unsupported
+                ride_estimate = estimate_to_from_airport(
+                    "SAN",  # coords not used in miles-only path
+                    address=None,
+                    miles_override=rider_miles,
+                    when_hhmm=ride_time or None,
+                    direction="to_airport",
+                )
+        except Exception:
+            ride_estimate = None
+
+        if ride_estimate:
+            est_cost, est_mins = ride_estimate
+            print(f"Estimated rideshare cost: ${est_cost:.2f} (~{est_mins} min)")
+        else:
+            print("Rideshare estimate: (need an address+key or miles)")
+
     # 4) Save (quiet)
     if not prompt_yes_no("Save this to your FlyCast history?", default=True):
         print("Done.")
@@ -121,12 +166,12 @@ def main():
                 )
                 user_id = cur.fetchone()[0]
 
-                # Map flight fields
+                # Map flight fields (we already have origin/dest above if wants_ride)
                 airline = flight_data.get("airline", "Unknown")
                 dep_ts = flight_data.get("departure_time")
                 arr_ts = flight_data.get("arrival_time")
                 origin = flight_data.get("origin") or flight_data.get("origin_airport")
-                dest = flight_data.get("destination") or flight_data.get("destination_airport")
+                dest   = flight_data.get("destination") or flight_data.get("destination_airport")
                 gate = flight_data.get("gate")
                 terminal = flight_data.get("terminal")
 
@@ -154,43 +199,10 @@ def main():
                 )
                 uf_id = cur.fetchone()[0]
 
-                # 5) Rideshare estimate (print + save)
-                if wants_ride:
-                    airport_code = None
-                    direction = None
-                    origin_up = (origin or "").upper()
-                    dest_up   = (dest or "").upper()
-                    if origin_up in ("SAN", "KSAN"):
-                        airport_code = "SAN"
-                        direction = "from_airport"
-                    elif dest_up in ("SAN", "KSAN"):
-                        airport_code = "SAN"
-                        direction = "to_airport"
-
-                    est_tuple = None
-                    if airport_code:
-                        from src.rideshare import estimate_to_from_airport
-                        est_tuple = estimate_to_from_airport(
-                            airport_code,
-                            address=rider_address or None,
-                            miles_override=rider_miles,
-                            when_hhmm=ride_time or None,
-                            direction=direction,
-                        )
-                    elif rider_miles is not None:
-                        # Generic miles-based estimate when airport unsupported
-                        from src.rideshare import estimate_to_from_airport
-                        est_tuple = estimate_to_from_airport(
-                            "SAN",  # coords not used in miles-only path
-                            address=None,
-                            miles_override=rider_miles,
-                            when_hhmm=ride_time or None,
-                            direction="to_airport",
-                        )
-
-                    if est_tuple:
-                        est_cost, est_mins = est_tuple
-                        print(f"Rideshare estimate: ${est_cost} ~ {est_mins} min")
+                # Save rideshare estimate if we have one
+                if ride_estimate:
+                    est_cost, est_mins = ride_estimate
+                    try:
                         cur.execute(
                             """
                             INSERT INTO rideshare_estimates (
@@ -199,8 +211,9 @@ def main():
                             """,
                             (uf_id, est_cost, est_mins),
                         )
-                    else:
-                        print("Rideshare estimate: (skipped — need an address+key or miles)")
+                    except Exception:
+                        # don't block save on this
+                        pass
 
         print("Saved to database.")
     except Exception as e:
